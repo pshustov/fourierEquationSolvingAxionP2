@@ -37,8 +37,6 @@ int inWhichInterval(const unsigned int N, const unsigned leftPowN, const double 
 	throw;
 }
 
-
-
 Distribution::Distribution(cudaGrid_3D & Grid)
 {
 	f.set_size_erase(Nf);

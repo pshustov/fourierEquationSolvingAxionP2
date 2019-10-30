@@ -409,7 +409,8 @@ void reduce(int wichKernel, int type, int size, int threads, int blocks, double 
 			break;
 
 		default:
-			break;
+			throw;
+			//break;
 		}
 		break;
 
@@ -511,11 +512,13 @@ void reduce(int wichKernel, int type, int size, int threads, int blocks, double 
 			}
 			break;
 		default:
-			break;
+			throw;
+			//break;
 		}
 		break;
 
 	default:
+		//throw;
 		break;
 	}
 }

@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "reduction.h"
 
 void reduce(int witchKernel, int type, int size, int threads, int blocks, double *d_idata, double *d_odata);
@@ -53,7 +54,7 @@ void getNumBlocksAndThreads(int whichKernel, int n, int maxThreads, int &blocks,
 
 double reductionMax(int size, double *inData)
 {
-	int witchKernel = 6;
+	int witchKernel = 5;
 	int cpuFinalThreshold = 256;
 	int maxThreads = 256;
 
@@ -101,7 +102,7 @@ double reductionMax(int size, double *inData)
 
 double reductionSum(int size, double *inData)
 {
-	int witchKernel = 6;
+	int witchKernel = 5;
 	int cpuFinalThreshold = 256;
 	int maxThreads = 256;
 

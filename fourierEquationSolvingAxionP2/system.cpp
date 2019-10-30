@@ -7,33 +7,32 @@ void systemEquCuda_3D::evaluate()
 {
 	double t = tau, dt;
 
-	Grid.calculateRhoK();
-	Grid.calculateOmega();
-	distr.setDistributionFunctionAsync(Grid.get_time(), Grid.get_rhoK_ptr(), Grid.get_omega_ptr());
+	//Grid.calculateRhoK();
+	//Grid.calculateOmega();
+	//distr.setDistributionFunctionAsync(Grid.get_time(), Grid.get_rhoK_ptr(), Grid.get_omega_ptr());
 
 	int countIn = 0, countOut = 0;
 
 	while (t >= (dt = Grid.get_dt(precision)) ) {
 		evlulate_step(dt);
 		++countOut;
-		if (distr.isDistributionFunctionReady())
+		/*if (distr.isDistributionFunctionReady())
 		{
 			++countIn;
 
 			Grid.calculateRhoK();
 			Grid.calculateOmega();
 			distr.setDistributionFunctionAsync(Grid.get_time(), Grid.get_rhoK_ptr(), Grid.get_omega_ptr());
-		}
+		}*/
 
 		t -= dt;
 	}
 
 	if (t < dt && t > 0) {
 		evlulate_step(t);
-
 	}
 
-	distr.waitUntilAsyncEnd();
+	//distr.waitUntilAsyncEnd();
 
 	isEnergyCalculated = false;
 
@@ -115,6 +114,7 @@ double systemEquCuda_3D::get_energy()
 	{
 		Grid.calculateRho();
 		energy = reductionSum((int)Grid.size(), Grid.get_rho_ptr());
+		energy /= Grid.get_N1()*Grid.get_N2()*Grid.get_N3();
 	}	
 	return energy;
 }
