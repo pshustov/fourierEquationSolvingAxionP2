@@ -1,6 +1,6 @@
 #include "reduction.h"
 
-void reduce(int type, int size, int threads, int blocks, double *d_idata, double *d_odata);
+void reduce(int witchKernel, int type, int size, int threads, int blocks, double *d_idata, double *d_odata);
 
 unsigned int nextPow2(unsigned int x)
 {
@@ -18,29 +18,57 @@ bool isPow2(unsigned int x)
 	return ((x&(x - 1)) == 0);
 }
 
-void getNumBlocksAndThreads(int n, int maxThreads, int &blocks, int &threads)
+void getNumBlocksAndThreads(int whichKernel, int n, int maxThreads, int &blocks, int &threads)
 {
-	threads = (n < maxThreads) ? nextPow2(n) : maxThreads;
-	blocks = (n + threads - 1) / threads;
+	cudaDeviceProp prop;
+	int device;
+	cudaGetDevice(&device);
+	cudaGetDeviceProperties(&prop, device);
+
+	if (whichKernel < 3)
+	{
+		threads = (n < maxThreads) ? nextPow2(n) : maxThreads;
+		blocks = (n + threads - 1) / threads;
+	}
+	else
+	{
+		threads = (n < maxThreads * 2) ? nextPow2((n + 1) / 2) : maxThreads;
+		blocks = (n + (threads * 2 - 1)) / (threads * 2);
+	}
+
+	if ((float)threads*blocks > (float)prop.maxGridSize[0] * prop.maxThreadsPerBlock)
+	{
+		printf("n is too large, please choose a smaller number!\n");
+	}
+
+	if (blocks > prop.maxGridSize[0])
+	{
+		printf("Grid size <%d> exceeds the device capability <%d>, set block size as %d (original %d)\n",
+			blocks, prop.maxGridSize[0], threads * 2, threads);
+
+		blocks /= 2;
+		threads *= 2;
+	}
 }
 
-double reductionMax(int size, double *inData)
+double reductionMax(int witchKernel, int size, double *inData, int maxThreads, int cpuFinalThreshold)
 {
+	int witchKernel = 6;
 	int cpuFinalThreshold = 256;
 	int maxThreads = 256;
 
 	if (!isPow2(size)) throw;
 
 	int blocks = 0, threads = 0;
-	getNumBlocksAndThreads(size, maxThreads, blocks, threads);
-	
+	getNumBlocksAndThreads(witchKernel, size, maxThreads, blocks, threads);
+
 	double *inData_dev = NULL;
 	double *outData_dev = NULL;
-	
+
 	cudaMalloc((void **)&inData_dev, blocks * sizeof(double));
 	cudaMalloc((void **)&outData_dev, blocks * sizeof(double));
-			
-	reduce(MAXIMUM, size, threads, blocks, inData, outData_dev);
+
+	reduce(witchKernel, MAXIMUM, size, threads, blocks, inData, outData_dev);
 	cudaDeviceSynchronize();
 
 	int s = blocks;
@@ -48,9 +76,9 @@ double reductionMax(int size, double *inData)
 	{
 		cudaMemcpy(inData_dev, outData_dev, blocks * sizeof(double), cudaMemcpyDeviceToDevice);
 
-		getNumBlocksAndThreads(s, maxThreads, blocks, threads);
-		reduce(MAXIMUM, s, threads, blocks, inData_dev, outData_dev);
-		
+		getNumBlocksAndThreads(witchKernel, s, maxThreads, blocks, threads);
+		reduce(witchKernel, MAXIMUM, s, threads, blocks, inData_dev, outData_dev);
+
 		s = blocks;
 	}
 
@@ -73,14 +101,14 @@ double reductionMax(int size, double *inData)
 
 double reductionSum(int size, double *inData)
 {
-
+	int witchKernel = 6;
 	int cpuFinalThreshold = 256;
 	int maxThreads = 256;
 
 	if (!isPow2(size)) throw;
 
 	int blocks = 0, threads = 0;
-	getNumBlocksAndThreads(size, maxThreads, blocks, threads);
+	getNumBlocksAndThreads(witchKernel, size, maxThreads, blocks, threads);
 
 
 	double *inData_dev = NULL;
@@ -89,7 +117,7 @@ double reductionSum(int size, double *inData)
 	cudaMalloc((void **)&inData_dev, blocks * sizeof(double));
 	cudaMalloc((void **)&outData_dev, blocks * sizeof(double));
 
-	reduce(SUMMATION, size, threads, blocks, inData, outData_dev);
+	reduce(witchKernel, SUMMATION, size, threads, blocks, inData, outData_dev);
 	cudaDeviceSynchronize();
 
 	int s = blocks;
@@ -97,8 +125,8 @@ double reductionSum(int size, double *inData)
 	{
 		cudaMemcpy(inData_dev, outData_dev, blocks * sizeof(double), cudaMemcpyDeviceToDevice);
 
-		getNumBlocksAndThreads(s, maxThreads, blocks, threads);
-		reduce(SUMMATION, s, threads, blocks, inData_dev, outData_dev);
+		getNumBlocksAndThreads(2, s, maxThreads, blocks, threads);
+		reduce(witchKernel, SUMMATION, s, threads, blocks, inData_dev, outData_dev);
 
 		s = blocks;
 	}
@@ -119,6 +147,7 @@ double reductionSum(int size, double *inData)
 
 	return result;
 }
+
 
 double reductionSigma2(int size, double *inData)
 {
