@@ -1,121 +1,160 @@
+// fourierEquationSolving.cpp : Defines the entry point for the console application.
+//
 
-#include "cuda_runtime.h"
-#include "device_launch_parameters.h"
+#include "stdafx.h"
 
-#include <stdio.h>
 
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
-
-__global__ void addKernel(int *c, const int *a, const int *b)
+__global__ void kernalStepSymplectic41(const int N, const double dt,
+	double *k_sqr, complex *Q, complex *P, complex *T)
 {
-    int i = threadIdx.x;
-    c[i] = a[i] + b[i];
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		P[i] -= 0.67560359597982881702384390448573 * (k_sqr[i] * Q[i] + Q[i] + T[i]) * dt;
+		Q[i] += 1.3512071919596576340476878089715 * P[i] * dt;
+	}
 }
 
-int main()
+
+__global__ void kernalStepSymplectic42(const int N, const double dt,
+	double *k_sqr, complex *Q, complex *P, complex *T)
 {
-    const int arraySize = 5;
-    const int a[arraySize] = { 1, 2, 3, 4, 5 };
-    const int b[arraySize] = { 10, 20, 30, 40, 50 };
-    int c[arraySize] = { 0 };
-
-    // Add vectors in parallel.
-    cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addWithCuda failed!");
-        return 1;
-    }
-
-    printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-        c[0], c[1], c[2], c[3], c[4]);
-
-    // cudaDeviceReset must be called before exiting in order for profiling and
-    // tracing tools such as Nsight and Visual Profiler to show complete traces.
-    cudaStatus = cudaDeviceReset();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceReset failed!");
-        return 1;
-    }
-
-    return 0;
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		P[i] -= -0.17560359597982881702384390448573 * (k_sqr[i] * Q[i] + Q[i] + T[i]) * dt;
+		Q[i] += -1.702414383919315268095375617943 * P[i] * dt;
+	}
 }
 
-// Helper function for using CUDA to add vectors in parallel.
-cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size)
+
+__global__ void kernalStepSymplectic43(const int N, const double dt,
+	double *k_sqr, complex *Q, complex *P, complex *T)
 {
-    int *dev_a = 0;
-    int *dev_b = 0;
-    int *dev_c = 0;
-    cudaError_t cudaStatus;
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		P[i] -= -0.17560359597982881702384390448573 * (k_sqr[i] * Q[i] + Q[i] + T[i]) * dt;
+		Q[i] += 1.3512071919596576340476878089715 * P[i] * dt;
+	}
+}
 
-    // Choose which GPU to run on, change this on a multi-GPU system.
-    cudaStatus = cudaSetDevice(0);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaSetDevice failed!  Do you have a CUDA-capable GPU installed?");
-        goto Error;
-    }
 
-    // Allocate GPU buffers for three vectors (two input, one output)    .
-    cudaStatus = cudaMalloc((void**)&dev_c, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
+__global__ void kernalStepSymplectic44(const int N, const double dt,
+	double *k_sqr, complex *Q, complex *P, complex *T)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		P[i] -= 0.67560359597982881702384390448573 * (k_sqr[i] * Q[i] + Q[i] + T[i]) * dt;
+	}
+}
 
-    cudaStatus = cudaMalloc((void**)&dev_a, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
 
-    cudaStatus = cudaMalloc((void**)&dev_b, size * sizeof(int));
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMalloc failed!");
-        goto Error;
-    }
+__global__ void kernel_Phi4_Phi6(const int N, double *t, double *q, const double lambda, const double g)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		t[i] = q[i] * q[i] * q[i] * (lambda + g * q[i] * q[i]);
+	}
+}
 
-    // Copy input vectors from host memory to GPU buffers.
-    cudaStatus = cudaMemcpy(dev_a, a, size * sizeof(int), cudaMemcpyHostToDevice);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
 
-    cudaStatus = cudaMemcpy(dev_b, b, size * sizeof(int), cudaMemcpyHostToDevice);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
+__global__ void kernelAddMullSqr(const int N, double* S, double* A, double m)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		S[i] += m * A[i] * A[i];
+	}
+}
 
-    // Launch a kernel on the GPU with one thread for each element.
-    addKernel<<<1, size>>>(dev_c, dev_a, dev_b);
+__global__ void kernelCulcRhoReal(const int N, double *rho, double *q, double *p, const double lambda, const double g)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		double qi = q[i];
+		double pi = p[i];
 
-    // Check for any errors launching the kernel
-    cudaStatus = cudaGetLastError();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "addKernel launch failed: %s\n", cudaGetErrorString(cudaStatus));
-        goto Error;
-    }
-    
-    // cudaDeviceSynchronize waits for the kernel to finish, and returns
-    // any errors encountered during the launch.
-    cudaStatus = cudaDeviceSynchronize();
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaDeviceSynchronize returned error code %d after launching addKernel!\n", cudaStatus);
-        goto Error;
-    }
+		rho[i] = 0.5 * qi * qi;
+		rho[i] += 0.5 * pi * pi;
+		rho[i] += (lambda / 4.0) * qi * qi * qi * qi;
+		rho[i] += (g / 6.0)  * qi * qi * qi * qi * qi * qi;
+	}
+}
 
-    // Copy output vector from GPU buffer to host memory.
-    cudaStatus = cudaMemcpy(c, dev_c, size * sizeof(int), cudaMemcpyDeviceToHost);
-    if (cudaStatus != cudaSuccess) {
-        fprintf(stderr, "cudaMemcpy failed!");
-        goto Error;
-    }
+__global__ void kernelDer(const int N, complex* T, double *k, complex *Q)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		T[i] = complex(0, 1) * k[i] * Q[i];
+	}
+}
 
-Error:
-    cudaFree(dev_c);
-    cudaFree(dev_a);
-    cudaFree(dev_b);
-    
-    return cudaStatus;
+
+__global__ void kernelSyncBuf(double *A, double *A0)
+{
+	const int i = threadIdx.x;
+	const int j = threadIdx.y;
+	const int k = threadIdx.z;
+	const int N1 = blockDim.x;
+	const int N2 = blockDim.y;
+	const int N3 = blockDim.z;
+
+	const int iB = blockIdx.x;
+	const int jB = blockIdx.y;
+	const int kB = blockIdx.z;
+	//const int N1B = gridDim.x;	//just never used
+	const int N2B = gridDim.y;
+	const int N3B = gridDim.z;
+	
+	const int iG = i + iB * N1;
+	const int jG = j + jB * N2;
+	const int kG = k + kB * N3;
+	//const int N1G = N1 * N1B;		//just never used
+	const int N2G = N2 * N2B;
+	const int N3G = N3 * N3B;
+
+	const int indB = k + N3 * (j + N2 * i);
+	const int indA = kB + N3B * (jB + N2B * iB);
+	const int indA0 = kG + N3G * (jG + N2G * iG);
+
+	extern __shared__ double B[];
+	B[indB] = A0[indA0];
+	__syncthreads();
+
+
+	int numOfElem = N1 * N2 * N3;		
+	int step = 1;
+	while (numOfElem > 1)
+	{
+		if (indB % (2*step) == 0)
+		{
+			B[indB] = B[indB] + B[indB + step];
+		}
+		__syncthreads();
+
+		numOfElem /= 2;
+		step *= 2;
+
+	}
+
+	if (indB == 0)
+	{
+		A[indA] = B[0] / (N1 * N2 * N3);
+	}
+
+}
+
+
+__global__ void kernelGetOmega(const int N, double *omega, double *kSqr, const double sigma2, const double sigma4, const double lambda, const double g)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		omega[i] = 1 + kSqr[i] + 3 * lambda * sigma2 + 15 * g * sigma4;
+	}
 }
