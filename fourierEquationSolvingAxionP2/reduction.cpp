@@ -51,7 +51,7 @@ void getNumBlocksAndThreads(int whichKernel, int n, int maxThreads, int &blocks,
 	}
 }
 
-double reductionMax(int witchKernel, int size, double *inData, int maxThreads, int cpuFinalThreshold)
+double reductionMax(int size, double *inData)
 {
 	int witchKernel = 6;
 	int cpuFinalThreshold = 256;
@@ -158,7 +158,7 @@ double reductionSigma2(int size, double *inData)
 	if (!isPow2(size)) throw;
 
 	int blocks = 0, threads = 0;
-	getNumBlocksAndThreads(size, maxThreads, blocks, threads);
+	getNumBlocksAndThreads(6, size, maxThreads, blocks, threads);
 
 
 	double *inData_dev = NULL;
@@ -167,7 +167,7 @@ double reductionSigma2(int size, double *inData)
 	cudaMalloc((void **)&inData_dev, blocks * sizeof(double));
 	cudaMalloc((void **)&outData_dev, blocks * sizeof(double));
 
-	reduce(SIGMA2, size, threads, blocks, inData, outData_dev);
+	reduce(6, SIGMA2, size, threads, blocks, inData, outData_dev);
 	cudaDeviceSynchronize();
 
 	int s = blocks;
@@ -175,8 +175,8 @@ double reductionSigma2(int size, double *inData)
 	{
 		cudaMemcpy(inData_dev, outData_dev, blocks * sizeof(double), cudaMemcpyDeviceToDevice);
 
-		getNumBlocksAndThreads(s, maxThreads, blocks, threads);
-		reduce(MEAN, s, threads, blocks, inData_dev, outData_dev);
+		getNumBlocksAndThreads(6, s, maxThreads, blocks, threads);
+		reduce(6, MEAN, s, threads, blocks, inData_dev, outData_dev);
 
 		s = blocks;
 	}
@@ -208,7 +208,7 @@ double reductionSigma4(int size, double *inData)
 	if (!isPow2(size)) throw;
 
 	int blocks = 0, threads = 0;
-	getNumBlocksAndThreads(size, maxThreads, blocks, threads);
+	getNumBlocksAndThreads(6, size, maxThreads, blocks, threads);
 
 
 	double *inData_dev = NULL;
@@ -217,7 +217,7 @@ double reductionSigma4(int size, double *inData)
 	cudaMalloc((void **)&inData_dev, blocks * sizeof(double));
 	cudaMalloc((void **)&outData_dev, blocks * sizeof(double));
 
-	reduce(SIGMA4, size, threads, blocks, inData, outData_dev);
+	reduce(6, SIGMA4, size, threads, blocks, inData, outData_dev);
 	cudaDeviceSynchronize();
 
 	int s = blocks;
@@ -225,8 +225,8 @@ double reductionSigma4(int size, double *inData)
 	{
 		cudaMemcpy(inData_dev, outData_dev, blocks * sizeof(double), cudaMemcpyDeviceToDevice);
 
-		getNumBlocksAndThreads(s, maxThreads, blocks, threads);
-		reduce(MEAN, s, threads, blocks, inData_dev, outData_dev);
+		getNumBlocksAndThreads(6, s, maxThreads, blocks, threads);
+		reduce(6, MEAN, s, threads, blocks, inData_dev, outData_dev);
 
 		s = blocks;
 	}
