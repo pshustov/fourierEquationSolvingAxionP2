@@ -13,23 +13,23 @@
     <Filter Include="FFT">
       <UniqueIdentifier>{9dfdc23e-0fff-4ccc-8276-59c8b8c3fc13}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Distribution">
+      <UniqueIdentifier>{9823c56a-2ba8-4cb4-a495-5eb0b8e9df68}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="reduction.cpp">
       <Filter>Параллельная редукция</Filter>
     </ClCompile>
-    <ClCompile Include="distribution.cpp">
-      <Filter>Исходные файлы</Filter>
-    </ClCompile>
     <ClCompile Include="fourierEquationSolvingAxionP2.cpp">
       <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="distribution.cpp">
+      <Filter>Distribution</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="complexCuda.h">
-      <Filter>Файлы заголовков</Filter>
-    </ClInclude>
-    <ClInclude Include="distribution.h">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="equations.h">
@@ -55,6 +55,9 @@
     </ClInclude>
     <ClInclude Include="FFT_implication.h">
       <Filter>FFT</Filter>
+    </ClInclude>
+    <ClInclude Include="distribution.h">
+      <Filter>Distribution</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -155,6 +155,46 @@ __global__ void kernelGetOmega(const int N, double *omega, double *kSqr, const d
 	int i = blockIdx.x * blockDim.x + threadIdx.x;
 	if (i < N)
 	{
-		omega[i] = 1 + kSqr[i] + 3 * lambda * sigma2 + 15 * g * sigma4;
+		omega[i] = sqrt(1 + kSqr[i] + 3 * lambda * sigma2 + 15 * g * sigma4);
+	}
+}
+
+
+__global__ void kernelSetRhoK(complex *T, double m, double *k_sqr, complex *Q, complex *P)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	T[i] = m * (P[i] * P[i].get_conj() + (1 + k_sqr[i]) * Q[i] * Q[i].get_conj());
+}
+
+__global__ void kernelAddRhoK(double m, complex *Q, complex *T)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	T[i] = m * Q[i] * T[i].get_conj();
+}
+
+__global__ void kernelGetPhi2(const int N, double *T, double *q)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		T[i] = q[i] * q[i];
+	}
+}
+
+__global__ void kernelGetPhi3(const int N, double *T, double *q)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		T[i] = q[i] * q[i] * q[i];
+	}
+}
+
+__global__ void kernelGetPhi5(const int N, double *T, double *q)
+{
+	int i = blockIdx.x * blockDim.x + threadIdx.x;
+	if (i < N)
+	{
+		T[i] = q[i] * q[i] * q[i] * q[i] * q[i];
 	}
 }

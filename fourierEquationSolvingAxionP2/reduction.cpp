@@ -149,103 +149,103 @@ double reductionSum(int size, double *inData)
 	return result;
 }
 
-
-double reductionSigma2(int size, double *inData)
-{
-
-	int cpuFinalThreshold = 256;
-	int maxThreads = 256;
-
-	if (!isPow2(size)) throw;
-
-	int blocks = 0, threads = 0;
-	getNumBlocksAndThreads(6, size, maxThreads, blocks, threads);
-
-
-	double *inData_dev = NULL;
-	double *outData_dev = NULL;
-
-	cudaMalloc((void **)&inData_dev, blocks * sizeof(double));
-	cudaMalloc((void **)&outData_dev, blocks * sizeof(double));
-
-	reduce(6, SIGMA2, size, threads, blocks, inData, outData_dev);
-	cudaDeviceSynchronize();
-
-	int s = blocks;
-	while (s > cpuFinalThreshold)
-	{
-		cudaMemcpy(inData_dev, outData_dev, blocks * sizeof(double), cudaMemcpyDeviceToDevice);
-
-		getNumBlocksAndThreads(6, s, maxThreads, blocks, threads);
-		reduce(6, MEAN, s, threads, blocks, inData_dev, outData_dev);
-
-		s = blocks;
-	}
-
-	double *outData_host;
-	outData_host = (double*)malloc(s * sizeof(double));
-	cudaMemcpy(outData_host, outData_dev, s * sizeof(double), cudaMemcpyDeviceToHost);
-
-	double result = 0;
-	for (size_t i = 0; i < s; i++)
-	{
-		result += outData_host[i];
-	}
-	result /= s;
-
-	cudaFree(inData_dev);
-	cudaFree(outData_dev);
-	free(outData_host);
-
-	return result;
-}
-
-double reductionSigma4(int size, double *inData)
-{
-
-	int cpuFinalThreshold = 256;
-	int maxThreads = 256;
-
-	if (!isPow2(size)) throw;
-
-	int blocks = 0, threads = 0;
-	getNumBlocksAndThreads(6, size, maxThreads, blocks, threads);
-
-
-	double *inData_dev = NULL;
-	double *outData_dev = NULL;
-
-	cudaMalloc((void **)&inData_dev, blocks * sizeof(double));
-	cudaMalloc((void **)&outData_dev, blocks * sizeof(double));
-
-	reduce(6, SIGMA4, size, threads, blocks, inData, outData_dev);
-	cudaDeviceSynchronize();
-
-	int s = blocks;
-	while (s > cpuFinalThreshold)
-	{
-		cudaMemcpy(inData_dev, outData_dev, blocks * sizeof(double), cudaMemcpyDeviceToDevice);
-
-		getNumBlocksAndThreads(6, s, maxThreads, blocks, threads);
-		reduce(6, MEAN, s, threads, blocks, inData_dev, outData_dev);
-
-		s = blocks;
-	}
-
-	double *outData_host;
-	outData_host = (double*)malloc(s * sizeof(double));
-	cudaMemcpy(outData_host, outData_dev, s * sizeof(double), cudaMemcpyDeviceToHost);
-
-	double result = 0;
-	for (size_t i = 0; i < s; i++)
-	{
-		result += outData_host[i];
-	}
-	result /= s;
-
-	cudaFree(inData_dev);
-	cudaFree(outData_dev);
-	free(outData_host);
-
-	return result;
-}
+//
+//double reductionSigma2(int size, double *inData)
+//{
+//
+//	int cpuFinalThreshold = 256;
+//	int maxThreads = 256;
+//
+//	if (!isPow2(size)) throw;
+//
+//	int blocks = 0, threads = 0;
+//	getNumBlocksAndThreads(6, size, maxThreads, blocks, threads);
+//
+//
+//	double *inData_dev = NULL;
+//	double *outData_dev = NULL;
+//
+//	cudaMalloc((void **)&inData_dev, blocks * sizeof(double));
+//	cudaMalloc((void **)&outData_dev, blocks * sizeof(double));
+//
+//	reduce(6, SIGMA2, size, threads, blocks, inData, outData_dev);
+//	cudaDeviceSynchronize();
+//
+//	int s = blocks;
+//	while (s > cpuFinalThreshold)
+//	{
+//		cudaMemcpy(inData_dev, outData_dev, blocks * sizeof(double), cudaMemcpyDeviceToDevice);
+//
+//		getNumBlocksAndThreads(6, s, maxThreads, blocks, threads);
+//		reduce(6, MEAN, s, threads, blocks, inData_dev, outData_dev);
+//
+//		s = blocks;
+//	}
+//
+//	double *outData_host;
+//	outData_host = (double*)malloc(s * sizeof(double));
+//	cudaMemcpy(outData_host, outData_dev, s * sizeof(double), cudaMemcpyDeviceToHost);
+//
+//	double result = 0;
+//	for (size_t i = 0; i < s; i++)
+//	{
+//		result += outData_host[i];
+//	}
+//	result /= s;
+//
+//	cudaFree(inData_dev);
+//	cudaFree(outData_dev);
+//	free(outData_host);
+//
+//	return result;
+//}
+//
+//double reductionSigma4(int size, double *inData)
+//{
+//
+//	int cpuFinalThreshold = 256;
+//	int maxThreads = 256;
+//
+//	if (!isPow2(size)) throw;
+//
+//	int blocks = 0, threads = 0;
+//	getNumBlocksAndThreads(6, size, maxThreads, blocks, threads);
+//
+//
+//	double *inData_dev = NULL;
+//	double *outData_dev = NULL;
+//
+//	cudaMalloc((void **)&inData_dev, blocks * sizeof(double));
+//	cudaMalloc((void **)&outData_dev, blocks * sizeof(double));
+//
+//	reduce(6, SIGMA4, size, threads, blocks, inData, outData_dev);
+//	cudaDeviceSynchronize();
+//
+//	int s = blocks;
+//	while (s > cpuFinalThreshold)
+//	{
+//		cudaMemcpy(inData_dev, outData_dev, blocks * sizeof(double), cudaMemcpyDeviceToDevice);
+//
+//		getNumBlocksAndThreads(6, s, maxThreads, blocks, threads);
+//		reduce(6, MEAN, s, threads, blocks, inData_dev, outData_dev);
+//
+//		s = blocks;
+//	}
+//
+//	double *outData_host;
+//	outData_host = (double*)malloc(s * sizeof(double));
+//	cudaMemcpy(outData_host, outData_dev, s * sizeof(double), cudaMemcpyDeviceToHost);
+//
+//	double result = 0;
+//	for (size_t i = 0; i < s; i++)
+//	{
+//		result += outData_host[i];
+//	}
+//	result /= s;
+//
+//	cudaFree(inData_dev);
+//	cudaFree(outData_dev);
+//	free(outData_host);
+//
+//	return result;
+//}

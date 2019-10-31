@@ -1,7 +1,20 @@
 #include "stdafx.h"
 
-double reductionSigma2(int size, double *inData);
-double reductionSigma4(int size, double *inData);
+//double reductionSigma2(int size, double *inData);
+//double reductionSigma4(int size, double *inData);
+double reductionSum(int size, double *inData);
+
+int getPow2(unsigned int N)
+{
+	int p = 0;
+	if (N&(N - 1) != 0) {
+		throw;
+	}
+	while (N >>= 1) {
+		p++;
+	}
+	return p;
+}
 
 cudaGrid_3D::cudaGrid_3D(const std::string filename)
 {
@@ -11,6 +24,7 @@ cudaGrid_3D::cudaGrid_3D(const std::string filename)
 
 	in >> N1;	in >> N2; 	in >> N3;
 	in >> L1;	in >> L2;	in >> L3;
+
 
 	//check N1 N2 N3
 	if (N1 % N_MIN != 0 || N2 % N_MIN != 0 || N3 % N_MIN != 0) { throw; }
@@ -300,9 +314,32 @@ void cudaGrid_3D::calculateRhoK()
 {
 	if (!isRhoKCalculateted)
 	{
-		calculateRho();
-		doFFTforward(rho, rhoK);
+		const int N = (int)(N1 * N2 * N3);
+		const int Nred = (int)(N1 * N2 * N3red);
+
+		dim3 block(BLOCK_SIZE);
+		dim3 grid((unsigned int)ceil((double)N / (double)BLOCK_SIZE));
+		dim3 gridRed((unsigned int)ceil((double)Nred / (double)BLOCK_SIZE));
+		
+		double m = 1 / (2. * 2. * M_PI * 2. * M_PI * 2. * M_PI);
+		kernelSetRhoK<<<gridRed, block>>>(rhoK.get_Array(), m, k_sqr.get_Array(), Q.get_Array(), P.get_Array());
 		cudaDeviceSynchronize();
+		
+		ifft();
+		kernelGetPhi3<<<grid, block>>>(N, t.get_Array(), q.get_Array());
+		cudaDeviceSynchronize();
+		doFFTforward(t, T);
+		m = lambda / (4. * 2. * M_PI * 2. * M_PI * 2. * M_PI);
+		kernelAddRhoK<<<gridRed, block>>>(m, Q.get_Array(), T.get_Array());
+		cudaDeviceSynchronize();
+
+		kernelGetPhi5<<<grid, block>>>(N, t.get_Array(), q.get_Array());
+		cudaDeviceSynchronize();
+		doFFTforward(t, T);
+		m = g / (6. * 2. * M_PI * 2. * M_PI * 2. * M_PI);
+		kernelAddRhoK<<<gridRed, block>>>(m, Q.get_Array(), T.get_Array());
+		cudaDeviceSynchronize();
+
 		isRhoKCalculateted = true;
 	}
 }
@@ -315,14 +352,17 @@ void cudaGrid_3D::calculateOmega()
 	const int N = (int)(N1 * N2 * N3);
 	const int Nred = (int)(N1 * N2 * N3red);
 
-	ifft();
-	sigma2 = reductionSigma2(N, q.get_Array());
-	sigma4 = reductionSigma4(N, q.get_Array());
-
 	dim3 block(BLOCK_SIZE);
-	dim3 grid((unsigned int)ceil((double)Nred / (double)BLOCK_SIZE));
+	dim3 grid((unsigned int)ceil((double)N / (double)BLOCK_SIZE));
+	dim3 gridRed((unsigned int)ceil((double)Nred / (double)BLOCK_SIZE));
 
+	ifft();
+	kernelGetPhi2<<<grid, block>>>(N, t.get_Array(), q.get_Array());
+
+	sigma2 = reductionSum(N, q.get_Array()) / N;
+	sigma4 = sigma2 * sigma2;
+	
 	cudaDeviceSynchronize();
-	kernelGetOmega<<<grid, block>>>(Nred, omega.get_Array(), k_sqr.get_Array(), sigma2, sigma4, lambda, g);
+	kernelGetOmega<<<gridRed, block>>>(Nred, omega.get_Array(), k_sqr.get_Array(), sigma2, sigma4, lambda, g);
 	cudaDeviceSynchronize();
 }
